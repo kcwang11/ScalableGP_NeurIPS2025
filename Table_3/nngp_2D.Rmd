@@ -1,0 +1,125 @@
+---
+title: "Untitled"
+author: "Anonymous"
+output: html_document
+---
+
+To execute the NNGP simulations, perform the following steps:
+
+Step 1: Load the required packages
+Step 2: Load and process the data
+Step 3: Run the Simulation
+
+
+# Step 1
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pracma)
+library(Rlinsolve)
+library(Matrix)
+library(peakRAM)
+library(spNNGP)
+```
+
+# Step 2
+
+```{r data prep}
+load("data_2d.RData")
+#load("data_2d_dense.RData")
+data %>% str()
+
+train = data %>% filter(training == 1)
+#train_small = train %>% filter(x < 0.3)
+#train = train_small
+
+# plot(train$y~train$x1)
+# plot(train$y~train$x2)
+test = data %>% filter(training == 0)
+
+coords = cbind(train$x1,train$x2)
+coords.ho = cbind(test$x1,test$x2)
+X.ho = matrix(rep(0,length(test$y)))
+```
+
+
+# Step 3:
+
+```{r}
+
+cov.model <- "matern"
+sigma.sq <- exp(-12)#6.5
+sigma.sq.IG <- c(2, sigma.sq)
+g <- 5
+theta.alpha <- as.matrix(expand.grid(seq(7, 9, length.out=g), exp(-20)*seq(0.00001/sigma.sq, 0.001/sigma.sq, length.out=g), 1.5 ))
+theta.alpha <- as.matrix(exp(2)*expand.grid(seq(7, 9, length.out=g), exp(0)*exp(seq(-5, 5, length.out=g)), 1.5))
+theta.alpha <- as.matrix(exp(2)*expand.grid(exp(0)*exp(seq(-5, 5, length.out=g)), exp(0)*exp(seq(-5, 5, length.out=g)), 1.5/exp(2)))
+
+theta.alpha
+
+
+colnames(theta.alpha) <- c("phi", "alpha", "nu")
+
+
+result <- peakRAM({
+  m.p <- spConjNNGP(train$y~1, coords=coords, n.neighbors = 25,
+                  X.0=X.ho, coords.0=coords.ho,
+                  n.omp.threads = 16,
+                  theta.alpha = theta.alpha, sigma.sq.IG = sigma.sq.IG,
+                  cov.model = cov.model)
+})
+print(result)
+
+summary(m.p)
+
+m.p$run.time
+
+
+mean((m.p$y.0.hat-test$y)^2)
+```
+
+
+
+
+```{r}
+mse_l = c()
+time_l = c()
+
+for(i in 1:10){
+  print(i)
+  result <- peakRAM({
+    m.p <- spConjNNGP(train$y~1, coords=coords, n.neighbors = 25,
+                    X.0=X.ho, coords.0=coords.ho,
+                    n.omp.threads = 16,
+                    theta.alpha = theta.alpha, sigma.sq.IG = sigma.sq.IG,
+                    cov.model = cov.model)
+  })
+  print(result)
+  mse_l = c(mse_l, mean((m.p$y.0.hat-test$y)^2))
+  time_l = c(time_l, result[2] %>% unname() %>% unlist())
+}
+
+
+mse_l %>% mean()
+mse_l %>% sd()
+
+time_l %>% mean()
+time_l %>% sd()
+
+```
+
+
+
+# Results
+
+```{r}
+mse_l %>% mean()
+mse_l %>% sd()
+
+time_l %>% mean()
+time_l %>% sd()
+
+```
+

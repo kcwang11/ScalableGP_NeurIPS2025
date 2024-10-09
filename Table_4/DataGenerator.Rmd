@@ -1,0 +1,117 @@
+---
+title: "DataGenerator"
+author: "Anonymous"
+output: html_document
+---
+
+# Instructions
+To run the DataGenerator.Rmd file, follow the following steps:
+
+Step 1: Ensure that you are in the correct working directory
+Step 2: Set the Seed you would like to use
+Step 3: Run the Generator
+
+
+
+# Step 1
+First ensure that the working directory of this program leads to the file "../Table_4" on your machine.
+```{r}
+getwd()
+#setwd()
+```
+
+# Step 2
+Then simply set the seed you would like to use then run the following cells. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+library(ggplot2)
+pi = 3.14159
+set.seed(23456)
+```
+
+# Step 3
+
+```{r}
+library(plotly)
+
+
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  r = sum((x-0.5)^2)
+  y = (1/(1+3*r) + 2*r)
+  return(0.2*sin(40*r))
+}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  r = sum((x-0.5)^2)
+  return(0.2*sin(100*r))
+}
+
+
+
+N = 234
+#N = 100
+
+grid1 = expand.grid(seq(0.2,0.8,length.out = N),seq(0.2,0.8,length.out = N)) %>% as.matrix()
+grid2 = expand.grid(seq(0.25,0.251,length.out = N),seq(0.25,0.251,length.out = N)) %>% as.matrix()
+grid = rbind(grid1,grid2)
+
+
+#grid[,1]
+
+z = apply(grid,1,f)
+x = grid
+
+df = data.frame(x = x[,1],y=x[,2],z=z)
+
+p <- plot_ly(
+    df, x= ~x, y= ~y, z= ~z,
+    type='mesh3d', intensity = ~z,
+    colors= colorRamp(rainbow(5))
+  )
+#p
+
+
+s2 = 5*10^(-0)
+s2 = 0.1*10^(-0)
+
+y = x %>% apply(1,f)
+y_true = y
+y = rnorm(nrow(grid),y,sd = sqrt(s2))
+
+#mean((y-y_true)^2)
+
+data = data.frame(x1 = grid[,1], x2 = grid[,2], y = y, y_true = y_true)
+training0 = sample(nrow(grid), 80000)
+#training0 = sample(nrow(grid), 10000)
+#training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+save(data, file = "data_2d_dense.RData")
+
+
+
+load("data_2d_dense.RData")
+data %>% str()
+write.csv(data,"data_2d_dense.csv")
+
+
+data %>% names()
+
+train_x = data[data$training == 1,c(1,2)]
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,c(1,2)]
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"train_x_2d_dense.csv", row.names = F, col.names = F)
+write.table(train_y,"train_y_2d_dense.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"test_x_2d_dense.csv", row.names = F, col.names = F)
+write.table(test_y,"test_y_2d_dense.csv", row.names = F, col.names = F)
+
+```

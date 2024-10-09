@@ -1,0 +1,205 @@
+---
+title: "HS-SVD"
+author: "Anonymous"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pracma)
+library(Rlinsolve)
+library(profmem)
+library(peakRAM)
+library(plotly)
+library(cPCG)
+library(microbenchmark)
+library(Matrix)
+
+
+logdet = function(A){
+  return(unname(unlist(determinant(A,logarithm=T)))[1])
+}
+```
+
+
+### Carrying out the simulation
+This cell imports the data and processes it
+
+```{r data prep}
+load("data_2d_dense.RData")
+data %>% str()
+
+data
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+str(data_train)
+
+str(data_test)
+
+df = data.frame(x = data$x1,y=data$x2,z=data$y)
+p <- plot_ly(
+    df, x= ~x, y= ~y, z= ~z,
+    type='mesh3d', intensity = ~z,
+    colors= colorRamp(rainbow(5))
+  )
+#p
+
+
+
+```
+
+
+
+### HS-SVD method
+This cell defines the HS-SVD method. The method takes in parameters:
+  x     - a set of predictors
+  y     - a set of outcomes
+  x_new - a set of new predictor values at which to make new predictions
+  init  - initial guess for the parameter values
+  beta  - smoothness parameter
+```{r}
+phifunc = function(m,x){
+  indices = expand.grid(1:m,1:m)
+  phi = matrix(0, nrow = ((m)^2), ncol = nrow(x))
+  for(i in 1:nrow(indices)){
+    phi[i,] = sin(indices[i,1] * pi * x[,1])*sin(indices[i,2] * pi * x[,2])
+  }
+  return(phi)
+}
+
+
+
+lambdafunc = function(m,eps,beta){
+  indices = expand.grid(1:m,1:m)
+  lambda = 0*(1:nrow(indices))
+  i_2 = indices^2
+  i_2 = i_2[,1] + i_2[,2]
+  lambda = ((pi^2)*(i_2) + eps^2)^(-beta)
+  return(lambda)
+}
+
+
+
+
+
+
+hssvd_predict_2d = function(x,y,x_new, init = c(0,0,0),M, beta = 1){
+  #browser()
+  N = nrow(x)
+  Phi = phifunc(M,x) %>% t()
+  phi_T_phi = t(Phi) %*% Phi
+  print(Phi %>% dim())
+  #cat("y: ", y)
+  phi_T_y = t(Phi) %*% y %>% as.matrix()
+  sum_y2 = t(y) %*% y
+  MM = nrow(phi_T_phi)
+  
+  
+  nlik = function(h_param,n, beta,Y, verbose = 1, Phi, phi_T_phi){
+    #time = Sys.time()
+    #browser()
+    if(verbose == 1){cat("-")}
+    eps = exp(h_param[1])
+    s2  = exp(h_param[2])
+    rho = exp(h_param[3])
+    #print(h_param)
+    Lambda = lambdafunc(M, eps, beta)*rho
+    
+    
+    t1 <- sum_y2 - t(cgsolve(s2 * diag(1/Lambda) + phi_T_phi, phi_T_y)) %*% phi_T_y
+    #t1 <- t(Y) %*% Y - t(Y) %*% Phi %*% cgsolve(s2 * diag(1/Lambda) + phi_T_phi, phi_T_y)
+    t1 <- t1/s2
+    t2 <- (n-M)*log(s2) + log(det( s2*diag(1,MM) + phi_T_phi %*% diag(Lambda)   ))
+    # print(t1)
+    # print(t2)
+    return(t1 + t2)
+  }
+  
+  # 
+  # #"Nelder-Mead"
+  # #"BFGS"
+  out = optim(init,nlik, method = "Nelder-Mead", n = N, beta = beta, Y=y, verbose = 1, Phi = Phi, phi_T_phi = phi_T_phi,control = list(reltol = 1e-8))$par
+  print(out)
+  #cat("eps, s2:",exp(out))
+  #init = c(5,-40)
+  eps = exp(out[1])#exp(out[1])
+  s2  = exp(out[2])#exp(out[2])
+  rho = exp(out[3])
+  Lambda = lambdafunc(M, eps, beta)*rho
+  # Hy = (y/s2) - (1/(s2))*Phi %*% (cgsolve((s2*diag(1/Lambda) + phi_T_phi), (phi_T_y), tol = 1e-16))
+  # y_new = t(phifunc(M,x_new)) %*% (Lambda * (t(Phi) %*% Hy))
+  
+  K_inv_y = (1/s2) * (y - Phi %*% cgsolve(  s2*diag(1/Lambda) + phi_T_phi  ,  phi_T_y  , tol = 1e-16 ))
+  y_new = t(phifunc(M,x_new)) %*% (diag(Lambda) %*% (t(Phi) %*% K_inv_y))
+  return(y_new)
+}
+
+
+
+
+```
+
+
+This cell performs the simulations
+```{r}
+M = 13
+
+result <- peakRAM({
+    y_new <- hssvd_predict_2d(data_train[,c(1,2)],data_train$y,data_test[,1:2],c(5,-4,30),M ,beta = 4)
+})
+
+
+print(result)
+
+mean((data_test$y-y_new)^2) %>% print()
+```
+
+
+```{r}
+M = 13
+
+mse_l = c()
+time_l = c()
+
+
+
+for(i in c(1:10)){  
+
+  result <- system.time({
+    y_new <- hssvd_predict_2d(data_train[,c(1,2)],data_train$y,data_test[,1:2],c(5,-4,30),M,4)
+  })  
+  
+  time_l = c(time_l,result[3] %>% unname())
+  mse_l = c(mse_l,mean((y_new - data_test$y)^2))
+  print(result)
+
+}
+
+#mean((y_new - data_test$y)^2)
+
+mse_l %>% mean()
+mse_l %>% sd()
+
+time_l %>% mean()
+time_l %>% sd()
+
+```
+
+
+
+This cell prints out the results. The standard deviations are in paratheses, i.e. Mean (SD)
+```{r}
+cat(
+  "Mean MSE:",
+  mse_l %>% mean(),
+  "(",mse_l %>% sd(),")",
+
+  "Mean Time:",
+  time_l %>% mean(),
+  "(",time_l %>% sd(),")"
+)
+
+```

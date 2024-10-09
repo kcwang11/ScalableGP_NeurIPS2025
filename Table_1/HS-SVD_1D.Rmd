@@ -1,0 +1,137 @@
+---
+title: "HS-SVD"
+author: "Anonymous"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pracma)
+library(Rlinsolve)
+library(profmem)
+library(peakRAM)
+library(plotly)
+library(cPCG)
+library(microbenchmark)
+library(Matrix)
+
+
+
+logdet = function(A){
+  return(unname(unlist(determinant(A,logarithm=T)))[1])
+}
+
+
+```
+
+
+
+### HS-SVD method
+This cell defines the HS-SVD method. The method takes in parameters:
+  x     - a set of predictors
+  y     - a set of outcomes
+  x_new - a set of new predictor values at which to make new predictions
+  init  - initial guess for the parameter values
+  beta  - smoothness parameter
+```{r}
+phifunc = function(n,x){
+  return(sqrt(2)*sin(pi*x*n))
+}
+
+hssvd_predict = function(x,y,x_new, init,M, beta = 1){
+  N = length(x)
+  Phi = sqrt(2)*sin(pi* x %*% t(c(1:M)))
+  phi_T_phi = t(Phi) %*% Phi
+  phi_T_y = t(Phi) %*% y
+  sum_y2 = t(y) %*% y
+  
+  nlik = function(h_param,n, beta,Y, verbose = 1, Phi, phi_T_phi){
+    if(verbose == 1){cat("-")}
+    eps = exp(h_param[1])
+    s2  = exp(h_param[2])
+    rho = exp(h_param[3])
+    Lambda = rho*(((1:M)*pi)^2+eps^2)^(-beta)
+
+    t1 <- sum_y2 - t(cgsolve(s2 * diag(1/Lambda) + phi_T_phi, phi_T_y)) %*% phi_T_y
+    t1 <- t1/s2
+    t2 <- (n-M)*log(s2) + log(det( s2*diag(1,M) + phi_T_phi %*% diag(Lambda)   ))
+    return(t1 + t2)
+  }
+  
+  
+  out = optim(init,nlik, method = "Nelder-Mead", n = N, beta = beta, Y=y, verbose = 1, Phi = Phi, phi_T_phi = phi_T_phi)$par
+  print(out)
+
+  eps = exp(out[1])
+  s2  = exp(out[2])
+  rho = exp(out[3])
+  
+  Lambda = rho*(((1:M)*pi)^2+eps^2)^(-beta)
+  K_inv_y = (1/s2) * (y - Phi %*% cgsolve(  s2*diag(1/Lambda) + phi_T_phi  ,  phi_T_y   ))
+  y_new = t(outer(1:M,x_new,phifunc)) %*% (diag(Lambda) %*% (t(Phi) %*% K_inv_y))
+
+  return(y_new)
+}
+
+```
+
+
+### Carrying out the simulation
+This cell imports the data and processes it
+
+```{r data prep}
+load("data_1D_100k.RData")
+
+data_train = data %>% filter(training == 1)
+data_train %>% str()
+data_test = data %>% filter(training == 0)
+```
+This cell performs the simulations. The initial value for $\rho$ must be approximately $3\epsilon$, and the initial value for $\epsilon$ should be between 6 and 14. Otherwise numerical instability will occur.
+```{r}
+N = nrow(data)
+M = 50
+beta = 3
+
+
+
+result <- peakRAM({
+  hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+eps_0 = 6
+plot(hssvd_predict(data_train$x,data_train$y,data_test$x,c(eps_0,2,eps_0*3),M, beta = beta))
+
+result
+
+
+mse_l  = c()
+time_l = c()
+
+for(i in c(1:10)){
+  mytime = system.time(yhat <- hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta))
+  time_l = c(time_l,mytime[3] %>% unname())
+  mse_l = c(mse_l,mean((yhat - data_test$y)^2))
+}
+
+mse_l %>% mean()
+mse_l %>% sd()
+
+time_l %>% mean()
+time_l %>% sd()
+```
+
+
+This cell prints out the results. The standard deviations are in paratheses, i.e. Mean (SD)
+```{r}
+cat(
+  "Mean MSE:",
+  mse_l %>% mean(),
+  "(",mse_l %>% sd(),")",
+
+  "Mean Time:",
+  time_l %>% mean(),
+  "(",time_l %>% sd(),")"
+)
+
+```

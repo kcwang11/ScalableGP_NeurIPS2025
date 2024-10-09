@@ -1,0 +1,314 @@
+---
+title: "HSSVD"
+author: "Anonymous"
+output: html_document
+---
+
+# Instructions
+To run this file, follow the following steps:
+
+Step 1: Ensure that you are in the correct working directory
+Step 2: Run the library imports and function definitions
+Step 3: Run the Simulations
+Step 4: Plot the results
+
+
+
+# Step 1
+First ensure that the working directory of this program leads to the file "../Table_4" on your machine.
+```{r}
+getwd()
+#setwd()
+```
+
+
+
+# Step 2
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pracma)
+library(Rlinsolve)
+library(profmem)
+library(peakRAM)
+library(plotly)
+library(cPCG)
+library(microbenchmark)
+library(Matrix)
+
+
+logdet = function(A){
+  return(unname(unlist(determinant(A,logarithm=T)))[1])
+}
+```
+
+
+
+```{r}
+phifunc = function(n,x){
+  #if(length(x)>1){print("no")}
+  return(sqrt(2)*sin(pi*x*n))
+}
+
+hssvd_predict = function(x,y,x_new, init,M, beta = 1){
+  #browser()
+  N = length(x)
+  Phi = sqrt(2)*sin(pi* x %*% t(c(1:M)))
+  phi_T_phi = t(Phi) %*% Phi
+  phi_T_y = t(Phi) %*% y
+  sum_y2 = t(y) %*% y
+  
+  nlik = function(h_param,n, beta,Y, verbose = 1, Phi, phi_T_phi){
+    #time = Sys.time()
+    #browser()
+    if(verbose == 1){cat("-")}
+    eps = exp(h_param[1])
+    s2  = exp(h_param[2])
+    rho = exp(h_param[3])
+    #print(h_param)
+    Lambda = rho*(((1:M)*pi)^2+eps^2)^(-beta)
+
+    t1 <- sum_y2 - t(cgsolve(s2 * diag(1/Lambda) + phi_T_phi, phi_T_y)) %*% phi_T_y
+    #t1 <- t(Y) %*% Y - t(Y) %*% Phi %*% cgsolve(s2 * diag(1/Lambda) + phi_T_phi, phi_T_y)
+    t1 <- t1/s2
+    t2 <- (n-M)*log(s2) + log(det( s2*diag(1,M) + phi_T_phi %*% diag(Lambda)   ))
+    # print(t1)
+    # print(t2)
+    return(t1 + t2)
+  }
+  
+  
+  out = optim(init,nlik, method = "Nelder-Mead", n = N, beta = beta, Y=y, verbose = 1, Phi = Phi, phi_T_phi = phi_T_phi)$par
+  print(out)
+  #print(exp(out))
+
+  eps = exp(out[1])
+  s2  = exp(out[2])
+  rho = exp(out[3])
+  
+  Lambda = rho*(((1:M)*pi)^2+eps^2)^(-beta)
+  K_inv_y = (1/s2) * (y - Phi %*% cgsolve(  s2*diag(1/Lambda) + phi_T_phi  ,  phi_T_y   ))
+  y_new = t(outer(1:M,x_new,phifunc)) %*% (diag(Lambda) %*% (t(Phi) %*% K_inv_y))
+
+  return(y_new)
+}
+
+
+
+
+```
+
+
+
+
+
+# Step 3
+
+
+```{r data prep}
+times = c()
+M = 50
+beta = 3
+
+
+
+
+
+
+load("Data/data_1D_20k.RData")
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+
+
+load("Data/data_1D_31k.RData")
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+
+
+
+
+load("Data/data_1D_50k.RData")
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+
+
+
+load("Data/data_1D_80k.RData")
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+
+
+
+
+load("Data/data_1D_120k.RData")
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+
+
+
+
+load("Data/data_1D_200k.RData")
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+
+
+
+
+
+
+load("Data/data_1D_2M.RData")
+
+data_train = data %>% filter(training == 1)
+data_test = data %>% filter(training == 0)
+
+
+
+
+
+result <- peakRAM({
+  # Your function here
+  yhat = hssvd_predict(data_train$x,data_train$y,data_test$x,c(8,-2,30),M, beta = beta)
+})
+
+times = c(times, result$Elapsed_Time_sec)
+
+times
+
+```
+
+
+
+
+
+
+
+
+
+
+# Step 4
+
+```{r}
+S = c(20000,  31697,  50237,  79621, 126191, 200000, 2000000) %>% log10()
+Sample_Size = S
+Sm = S[1:6]
+
+#time_hssvd = c(0.14, 0.158, 0.25, 0.39, 0.56, 0.92, 8.68) %>% log10()
+time_hssvd = times %>% log10()
+time = time_hssvd
+#time_ski   = c(3.15,  3.8  ,   4.1  ,   5.08    ,  6.72     ,  9.9    ) %>% log10()
+time_ski   = read.csv("time_ski.csv", header = F)[,1] %>% log10()
+
+#time_love  = c(3.72,   4.48 ,   4.98  ,   6.85    ,   11.58    ,  23.66) %>% log10()
+time_love  = read.csv("time_love.csv", header = F)[,1] %>% log10()
+
+
+
+
+
+
+dat = data.frame(S = c(S,Sm,Sm), time = c(time_hssvd, time_ski, time_love), group = c(rep("HS-SVD",7),rep("SKI",6),rep("LOVE",6)))
+dat$group = dat$group %>% factor(levels = c("HS-SVD","SKI","LOVE"))
+dat
+
+
+ggplot(dat, aes(x = S, y = time, color = group)) +  
+  geom_line(size = 1.2) +
+  geom_point(col = "black") + 
+  labs(
+    x = "Sample Size",
+    y = "Computation Time",
+    color = "Legend"
+  ) +
+  theme_minimal() + 
+  scale_x_continuous(breaks = S, labels = 10^S) + 
+  scale_y_continuous(breaks = c(-1,0,1), labels = c("0.1","1","10"), , limits = c(-1,1.5))
+```
+
+
+
+
+
+
+
+
+
+
+

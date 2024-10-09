@@ -1,0 +1,516 @@
+---
+title: "DataGenerator"
+author: "Anonymous"
+output: html_document
+---
+
+# Instructions
+To run the DataGenerator.Rmd file, follow the following steps:
+
+Step 1: Ensure that you are in the correct working directory
+Step 2: Set the Seed you would like to use
+Step 3: Run the Generator
+
+
+
+# Step 1
+First ensure that the working directory of this program leads to the file "../Table_4" on your machine.
+```{r}
+getwd()
+#setwd()
+```
+
+# Step 2
+Then simply set the seed you would like to use then run the following cells. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+library(ggplot2)
+pi = 3.14159
+set.seed(23456)
+```
+
+
+# Step 3
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 2000
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+#scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+#scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_2k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+
+ggplot()+
+  geom_line(aes(y = y_true, x = x))+
+  labs(
+    #title = "True Function in Simulations 1 and 2",
+    #subtitle = "Data from the mpg dataset",
+    x = "X", # X-axis label
+    y = "Y"#,     # Y-axis label
+    #caption = "Source: ggplot2 mpg dataset"
+  )+
+  theme(
+    #plot.title = element_text(size = 20, face = "bold"),    # Title size
+    #plot.subtitle = element_text(size = 16),               # Subtitle size
+    axis.title.x = element_text(size = 20),                # X-axis label size
+    axis.title.y = element_text(size = 20),                # Y-axis label size
+    axis.text.x = element_text(size = 12),                 # X-axis tick label size
+    axis.text.y = element_text(size = 12),                 # Y-axis tick label size
+    #plot.caption = element_text(size = 10)                 # Caption size
+  )
+
+
+load("Data/data_1D_2k.RData")
+data
+write.csv(data,"Data/data_1D_2k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_2k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_2k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_2k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_2k.csv", row.names = F, col.names = F)
+```
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 20000
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+#scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+#scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_20k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+
+load("Data/data_1D_20k.RData")
+data
+write.csv(data,"Data/data_1D_20k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_20k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_20k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_20k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_20k.csv", row.names = F, col.names = F)
+```
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 31697
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+#scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+#scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_31k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+
+load("Data/data_1D_31k.RData")
+data
+write.csv(data,"Data/data_1D_31k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_31k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_31k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_31k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_31k.csv", row.names = F, col.names = F)
+```
+
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 50237
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+#scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+#scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_50k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+
+load("Data/data_1D_50k.RData")
+data
+write.csv(data,"Data/data_1D_50k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_50k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_50k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_50k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_50k.csv", row.names = F, col.names = F)
+```
+
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 79621
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+#scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+#scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_80k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+
+load("Data/data_1D_80k.RData")
+data
+write.csv(data,"Data/data_1D_80k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_80k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_80k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_80k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_80k.csv", row.names = F, col.names = F)
+```
+
+
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 126191
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+#scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+#scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_120k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+
+load("Data/data_1D_120k.RData")
+data
+write.csv(data,"Data/data_1D_120k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_120k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_120k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_120k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_120k.csv", row.names = F, col.names = F)
+```
+
+
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+
+N = 200000
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+
+
+
+save(data, file = "Data/data_1D_200k.RData")
+plot(y~x)
+lines(y_true~x, col = "red")
+
+load("Data/data_1D_200k.RData")
+data
+write.csv(data,"Data/data_1D_200k_csv.csv")
+
+
+train_x = data[data$training == 1,]$x
+train_y = data[data$training == 1,]$y
+
+test_x = data[data$training == 0,]$x
+test_y = data[data$training == 0,]$y
+
+write.table(train_x,"Data/train_x_200k.csv", row.names = F, col.names = F)
+write.table(train_y,"Data/train_y_200k.csv", row.names = F, col.names = F)
+
+
+write.table(test_x,"Data/test_x_200k.csv", row.names = F, col.names = F)
+write.table(test_y,"Data/test_y_200k.csv", row.names = F, col.names = F)
+```
+
+
+## Generator for 2M data
+
+```{r}
+f = function(x){
+  # x = (x+0.2)/(1.4)
+  return(sin(300*(x-0.5)^2))
+}
+  
+N = 2*10^(6)
+
+
+x = seq(0.2,0.8,length.out = N)
+
+s2 = 5*10^(-0)
+s2 = 0.3*10^(-0)
+
+y = x %>% sapply(f)
+y = y-mean(y)
+y = y/(sd(y))
+y_true = y
+y = rnorm(N,y,sd = sqrt(s2))
+
+
+data = data.frame(x = x, y = y, y_true = y_true)
+training0 = sample(N, floor(0.8*N))
+training0 %>% length()
+data$training = 0
+data[training0,]$training = 1
+
+str(data)
+
+# #scatter.smooth(data$x,data$training, span = 2/3, degree = 0, family =)
+# #scatter.smooth(data$x,data$y_true)
+
+
+save(data, file = "Data/data_1D_2M.RData")
+
+# plot(y~x)
+# lines(y_true~x, col = "red")
+
+```
+
+
+
+
+
+
+
+
