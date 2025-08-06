@@ -1,0 +1,96 @@
+---
+title: "Untitled"
+author: "Anonymous"
+output: html_document
+---
+
+To execute the NNGP simulations, perform the following steps:
+
+Step 1: Load the required packages
+Step 2: Load and process the data
+Step 3: Run the Simulation
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pracma)
+library(Rlinsolve)
+library(Matrix)
+library(peakRAM)
+library(spNNGP)
+
+# Function to randomly split data into training and testing sets
+split_data <- function(data, n_train, n_test) {
+  total_needed <- n_train + n_test
+  if (total_needed > nrow(data)) stop("Requested more observations than available")
+  indices <- sample(seq_len(nrow(data)), total_needed)
+  list(train = data[indices[1:n_train], ], test = data[indices[(n_train + 1):total_needed], ])
+}
+```
+
+
+
+
+
+# Step 2
+
+```{r data prep}
+# Read and merge data
+coords <- read.table("scaled_coordinates.csv", header = TRUE, sep = ",")
+expr   <- read.table("standardized_mbp_expression.csv", header = TRUE)
+data   <- cbind(coords, expr)
+str(data)
+
+
+```
+
+
+# Step 3:
+```{r}
+# Parameters for the NNGP
+cov.model <- "matern"
+sigma.sq  <- exp(-12)
+sigma.sq.IG <- c(2, sigma.sq)
+g <- 5
+# Define parameter grid for theta.alpha (using one final specification)
+theta.alpha <- as.matrix(exp(2) * expand.grid(exp(seq(-5, 5, length.out = g)),
+                                               exp(seq(-5, 5, length.out = g)),
+                                               1.5 / exp(2)))
+colnames(theta.alpha) <- c("phi", "alpha", "nu")
+
+n_iter <- 10
+mse_l <- numeric(n_iter)
+time_l <- numeric(n_iter)
+
+for (i in 1:n_iter) {
+  # Create a new random split for each iteration (using iteration as seed for reproducibility)
+  set.seed(i)
+  split <- split_data(data, n_train = 80000, n_test = 20000)
+  train <- split$train
+  test  <- split$test
+  
+  # Extract spatial coordinates and initialize design matrix for predictions
+  coords_train <- as.matrix(train %>% select(x, y))
+  coords_test  <- as.matrix(test %>% select(x, y))
+  X.ho <- matrix(0, nrow = nrow(test), ncol = 1)
+  
+  # Run NNGP model and record performance metrics
+  result <- peakRAM({
+    m.p <- spConjNNGP(train$Mbp ~ 1, coords = coords_train, n.neighbors = 25,
+                      X.0 = X.ho, coords.0 = coords_test,
+                      n.omp.threads = 16,
+                      theta.alpha = theta.alpha, sigma.sq.IG = sigma.sq.IG,
+                      cov.model = cov.model)
+  })
+  
+  mse_l[i] <- mean((m.p$y.0.hat - test$Mbp)^2)
+  time_l[i] <- result$Elapsed_Time
+  cat("Iteration", i, "- MSE:", mse_l[i], "Time:", time_l[i], "\n")
+}
+
+cat("\nAverage MSE:", mean(mse_l), " (SD:", sd(mse_l), ")\n")
+cat("Average Time:", mean(time_l), " (SD:", sd(time_l), ")\n")
+
+```

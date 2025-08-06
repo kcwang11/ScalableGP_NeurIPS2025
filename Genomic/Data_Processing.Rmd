@@ -1,0 +1,119 @@
+---
+title: "genomic"
+output: html_document
+date: "2025-03-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("C:\\Users\\Mapache\\Desktop\\Simulations_GP\\Simulations_GP\\Genomic")
+```
+
+
+
+
+
+
+
+
+
+```{r}
+library(Seurat)
+library(SeuratObject)
+library(tidyverse)
+if (!requireNamespace("Banksy", quietly = TRUE)) {
+  remotes::install_github("prabhakarlab/Banksy@devel")
+}
+data = Load10X_Spatial("Visium_HD_Mouse_Brain_binned_outputs",bin.size = c(8))
+DefaultAssay(data) <- "Spatial.008um"
+data <- NormalizeData(data)
+data <- FindVariableFeatures(data)
+data <- ScaleData(data)
+
+```
+
+
+
+
+
+
+```{r}
+genes <- c("Mbp", "Pcp4")
+expr_mbp  <- data@assays$Spatial$data["Mbp", ]
+expr_pcp4 <- data@assays$Spatial$data["Pcp4", ]
+coords <- data@images$slice1.008um@boundaries$centroids@coords
+coords <- coords[, c(2, 1)]  # Swap columns if needed: first column x, second y
+df <- data.frame(x = coords[, 1],
+                 y = coords[, 2],
+                 Mbp = expr_mbp,
+                 Pcp4 = expr_pcp4)
+
+par(mfrow = c(1, 2))
+plot(density(df$Mbp), 
+     main = "Density Plot of Mbp Expression", 
+     xlab = "Mbp Expression")
+plot(density(df$Pcp4), 
+     main = "Density Plot of Pcp4 Expression", 
+     xlab = "Pcp4 Expression")
+par(mfrow = c(1, 1))
+p1 <- SpatialFeaturePlot(data, features = "Mbp") + ggtitle("Spatial Expression of Mbp")
+p2 <- SpatialFeaturePlot(data, features = "Pcp4") + ggtitle("Spatial Expression of Pcp4")
+print(p1)
+print(p2)
+write.csv(df, file = "Data/gene_expression_coordinates.csv", row.names = FALSE)
+coords %>% str()
+
+```
+
+
+
+```{r}
+set.seed(123)
+
+Mbp_mean <- mean(df$Mbp)
+Mbp_sd   <- sd(df$Mbp)
+df$Mbp <- (df$Mbp - Mbp_mean) / Mbp_sd
+
+x_min <- min(df$x)
+x_max <- max(df$x)
+y_min <- min(df$y)
+y_max <- max(df$y)
+
+scale_coordinate <- function(x, min_val, max_val) {
+  0.2 + (0.6 * (x - min_val) / (max_val - min_val))
+}
+
+df$x <- scale_coordinate(df$x, x_min, x_max)
+df$y <- scale_coordinate(df$y, y_min, y_max)
+
+coordinates <- df[, c("x", "y")]
+Mbp <- df$Mbp
+Pcp4 <- df$Pcp4
+
+write.table(coordinates, file = "Data/coordinates.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+write.table(data.frame(Mbp = Mbp), file = "Data/Mbp.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+write.table(data.frame(Pcp4 = Pcp4), file = "Data/Pcp4.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+save(df, file = "Data/df.RData")
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,161 @@
+---
+title: "genomic"
+output: html_document
+date: "2025-03-10"
+---
+
+# Data Processing for the Spatial Transcriptomic dataset
+This notebook contains the necessary code to extract the Mbp and Pcp4 data from the 10xVisium spatial dataset. To execute this notebook, first ensure that you have downloaded the dataset, available at https://www.10xgenomics.com/datasets/visium-hd-cytassist-gene-expression-libraries-of-mouse-brain-he Then execute the code.
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(Seurat)
+library(SeuratObject)
+library(tidyverse)
+if (!requireNamespace("Banksy", quietly = TRUE)) {
+  remotes::install_github("prabhakarlab/Banksy@devel")
+}
+data = Load10X_Spatial("Visium_HD_Mouse_Brain_binned_outputs",bin.size = c(8))
+DefaultAssay(data) <- "Spatial.008um"
+data <- NormalizeData(data)
+data <- FindVariableFeatures(data)
+data <- ScaleData(data)
+
+genes <- c("Mbp", "Pcp4")
+
+# Extract gene expression for Mbp and Pcp4 from the normalized data in the Spatial assay
+expr_mbp  <- data@assays$Spatial$data["Mbp", ]
+expr_pcp4 <- data@assays$Spatial$data["Pcp4", ]
+
+# Extract the xy coordinates from the image boundaries 
+coords <- data@images$slice1.008um@boundaries$centroids@coords
+coords <- coords[, c(2, 1)]  # Swap columns if needed: first column x, second y
+
+# Combine coordinates and gene expression into a data frame
+df <- data.frame(x = coords[, 1],
+                 y = coords[, 2],
+                 Mbp = expr_mbp,
+                 Pcp4 = expr_pcp4)
+
+# Plot density of Mbp and Pcp4 expression in two separate plots
+par(mfrow = c(1, 2))  # Set plotting layout to 1 row, 2 columns
+plot(density(df$Mbp), 
+     main = "Density Plot of Mbp Expression", 
+     xlab = "Mbp Expression")
+plot(density(df$Pcp4), 
+     main = "Density Plot of Pcp4 Expression", 
+     xlab = "Pcp4 Expression")
+par(mfrow = c(1, 1))  # Reset plotting layout
+
+# Alternatively, create spatial feature plots for each gene using Seurat
+p1 <- SpatialFeaturePlot(data, features = "Mbp") + ggtitle("Spatial Expression of Mbp")
+p2 <- SpatialFeaturePlot(data, features = "Pcp4") + ggtitle("Spatial Expression of Pcp4")
+print(p1)
+print(p2)
+
+
+write.csv(df, file = "Data/gene_expression_coordinates.csv", row.names = FALSE)
+
+coords %>% str()
+set.seed(123)
+
+n <- nrow(df)
+train_size <- floor(0.8 * n)
+train_idx <- sample(1:n, size = train_size)
+test_idx <- setdiff(1:n, train_idx)
+
+df_train <- df[train_idx, ]
+df_test  <- df[test_idx, ]
+
+coordinates_training <- df_train[, c("x", "y")]
+coordinates_testing  <- df_test[, c("x", "y")]
+
+Mbp_train  <- df_train$Mbp
+Mbp_test   <- df_test$Mbp
+
+Pcp4_train <- df_train$Pcp4
+Pcp4_test  <- df_test$Pcp4
+
+# write.table(coordinates_training, file = "Data/coordinates_training.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+# write.table(coordinates_testing, file = "Data/coordinates_testing.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+# write.table(data.frame(Mbp_train = Mbp_train), file = "Data/Mbp_train.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+# write.table(data.frame(Mbp_test = Mbp_test), file = "Data/Mbp_test.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+# write.table(data.frame(Pcp4_train = Pcp4_train), file = "Data/Pcp4_train.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+# write.table(data.frame(Pcp4_test = Pcp4_test), file = "Data/Pcp4_test.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+save(df_test, file = "Data/df_test.RData")
+save(df_train, file = "Data/df_train.RData")
+
+
+
+
+```
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# ---------------------------
+# Apply scaling transformations to the entire dataset
+# ---------------------------
+
+# Standardize the Mbp variable for the whole dataset
+Mbp_mean <- mean(df$Mbp)
+Mbp_sd   <- sd(df$Mbp)
+df$Mbp <- (df$Mbp - Mbp_mean) / Mbp_sd
+
+
+# Standardize the Mbp variable for the whole dataset
+Pcp4_mean <- mean(df$Pcp4)
+Pcp4_sd   <- sd(df$Pcp4)
+df$Pcp4 <- (df$Pcp4 - Pcp4_mean) / Pcp4_sd
+
+# Scale coordinates (x and y) to be between 0.2 and 0.8 for the whole dataset
+x_min <- min(df$x)
+x_max <- max(df$x)
+y_min <- min(df$y)
+y_max <- max(df$y)
+
+scale_coordinate <- function(x, min_val, max_val) {
+  0.2 + (0.6 * (x - min_val) / (max_val - min_val))
+}
+
+df$x <- scale_coordinate(df$x, x_min, x_max)
+df$y <- scale_coordinate(df$y, y_min, y_max)
+
+
+
+# Write each component to a CSV file using write.table with no column names
+write.table(data.frame(coordinates = df[,c(1:2)]), file = "Data/coordinates.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+write.table(data.frame(Mbp = df$Mbp), file = "Data/Mbp.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+write.table(data.frame(Pcp4 = df$Pcp4), file = "Data/Pcp4.csv", sep = ",", row.names = FALSE, col.names = FALSE)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

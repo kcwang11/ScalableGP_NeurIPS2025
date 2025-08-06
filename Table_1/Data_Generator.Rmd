@@ -1,0 +1,108 @@
+---
+title: "DataGenerator"
+author: "Anonymous"
+output: html_document
+---
+
+
+
+
+
+# Instructions
+To run the DataGenerator.Rmd file, follow the following steps:
+
+Step 1: Ensure that you are in the correct working directory
+Step 2: Set the Seed you would like to use
+Step 3: Run the Generator
+
+
+
+# Step 1
+First ensure that the working directory of this program leads to the file "../Table_1" on your machine.
+```{r}
+getwd()
+#setwd()
+```
+
+
+# Step 2
+Then simply set the seed you would like to use then run the following cells. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+library(ggplot2)
+pi = 3.14159
+
+# Set the seed you will use for your simulations
+set.seed(23456)
+```
+
+
+
+
+
+# Step 3
+
+```{r}
+set.seed(123) # For reproducibility
+
+# Define the true function
+f <- function(x) {
+  sin(300 * (x - 0.5)^2)
+}
+
+# Parameters
+N <- 1000000
+s2 <- 0.3
+
+# Generate data
+x <- seq(0.2, 0.8, length.out = N)
+x <- 0.2+runif(N)*0.6
+y_true <- sapply(x, f)
+y_true <- scale(y_true, center = TRUE, scale = TRUE) %>% as.vector()
+y <- rnorm(N, mean = y_true, sd = sqrt(s2))
+
+# Put in data frame
+data <- data.frame(x = x, y = y, y_true = y_true)
+
+# Check structure
+str(data)
+
+# Save
+save(data, file = "Data/data_1D_100k.RData")
+
+# Quick plot
+plot(y ~ x, data = data[1:100000,], pch = ".", col = "black")
+points(y_true ~ x, data = data[1:100000,], col = "red", lwd = 1)
+
+
+```
+
+
+```{r}
+
+# Load data
+load("Data/data_1D_100k.RData")
+
+# Quick check
+str(data)
+
+# Save full data as CSV
+write.csv(data, "Data/data_1D_100k_full.csv", row.names = FALSE)
+
+# Save x, y, y_true as separate files (no split)
+write.table(data$x, "Data/x_100k.csv", row.names = FALSE, col.names = FALSE)
+write.table(data$y, "Data/y_100k.csv", row.names = FALSE, col.names = FALSE)
+write.table(data$y_true, "Data/y_true_100k.csv", row.names = FALSE, col.names = FALSE)
+
+
+
+```
+
+
+
+
+

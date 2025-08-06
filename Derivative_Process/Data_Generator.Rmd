@@ -1,0 +1,129 @@
+---
+title: "DataGenerator"
+author: "Anonymous"
+output: html_document
+---
+
+
+
+
+
+# Instructions
+To run the DataGenerator.Rmd file, follow the following steps:
+
+Step 1: Ensure that you are in the correct working directory
+Step 2: Set the Seed you would like to use
+Step 3: Run the Generator
+
+
+
+# Step 1
+First ensure that the working directory of this program leads to the file "../Table_1" on your machine.
+```{r}
+getwd()
+#setwd()
+```
+
+
+# Step 2
+Then simply set the seed you would like to use then run the following cells. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotly)
+library(ggplot2)
+pi = 3.14159
+
+# Set the seed you will use for your simulations
+set.seed(23456)
+```
+
+
+
+
+
+# Step 3
+
+```{r}
+# Define the function f(x)
+f = function(x){
+  return(sin(300*(x-0.5)^2))
+}
+
+df = function(x){
+  return(600 * (x-0.5) * cos(300*(x-0.5)^2))
+}
+
+
+N = 1000000  # Number of data points
+
+x <- runif(N, min = 0.2, max = 0.8)
+
+# Variance parameter for noise (0.3 in this case)
+s2 = 0.3
+
+# Compute the true y values using f(x)
+y = sapply(x, f)
+dy= sapply(x, df)
+
+dy = dy / sd(y)
+
+y = y - mean(y)
+y = y / sd(y)
+y_true = y
+
+# Add Gaussian noise to y using the variance s2
+y = rnorm(N, mean = y, sd = sqrt(s2))
+
+# Create a data frame containing the x values, noisy y, and true y
+data = data.frame(x = x, y = y, y_true = y_true, dy = dy)
+
+# Display the structure of the data frame
+str(data)
+
+
+```
+
+
+```{r}
+
+# Save the data to an RData file
+save(data, file = "Data/data_1D.RData")
+
+# Visualize the noisy data along with the true function values
+plot(y ~ x, main = "Noisy Data vs. True Function", xlab = "x", ylab = "y", data = data[1:100000,])
+points(y_true ~ x, col = "red", data = data[1:100000,])
+points(dy ~ x, col = "red", data = data[1:100000,])
+
+# Write the complete data frame to a CSV file
+write.csv(data, "Data/data_1D_full.csv", row.names = FALSE)
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
