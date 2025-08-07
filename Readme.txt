@@ -6,3 +6,5 @@ Table_1: 1D Simulation
 Table_2: 2D Simulation
 Derivative_Process: Derivative Simulation and Experiment
 Genomic: Spatial Transcriptomics Experiment
+
+Additionally, the Table_1_10_Epochs folder replicates the simulations in Table_1 but with all training epochs set to 10.
