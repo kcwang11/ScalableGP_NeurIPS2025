@@ -1,0 +1,128 @@
+---
+title: "Untitled"
+author: "Anonymous"
+output: html_document
+---
+
+To execute the NNGP simulations, perform the following steps:
+
+Step 1: Load the required packages
+Step 2: Load and process the data
+Step 3: Run the Simulation
+
+
+
+# Step 1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pracma)
+library(Rlinsolve)
+library(Matrix)
+library(peakRAM)
+library(spNNGP)
+
+getwd()
+split_data <- function(data, n_train, n_test) {
+  total_needed <- n_train + n_test
+  if (total_needed > nrow(data)) stop("Requested more observations than available")
+  indices <- sample(seq_len(nrow(data)), total_needed)
+  list(train = data[indices[1:n_train], ], test = data[indices[(n_train + 1):total_needed], ])
+}
+```
+
+
+### Step 2
+
+```{r data prep}
+load("Data/data_1D_100k.RData")
+data %>% str()
+
+split <- split_data(data, n_train = 400000, n_test = 20000)
+train <- split$train
+test  <- split$test
+
+plot(train$y~train$x)
+
+coords = cbind(train$x,train$x)
+coords.ho = cbind(test$x,test$x)
+X.ho = matrix(test$x)
+
+coords = cbind(train$x,0)
+coords.ho = cbind(test$x,0)
+X.ho = matrix(test$x)
+
+```
+
+
+
+# Step 3
+```{r}
+coords = cbind(train$x,train$x)
+coords.ho = cbind(test$x,test$x)
+X.ho = matrix(test$x)
+X.ho = matrix(rep(0,length(test$x)))
+
+cov.model <- "matern"
+sigma.sq <- exp(-12)#6.5
+sigma.sq.IG <- c(2, sigma.sq)
+g <- 5
+
+theta.alpha <- as.matrix(exp(2)*expand.grid(exp(0)*exp(seq(-5, 5, length.out=g)), exp(0)*exp(seq(-5, 5, length.out=g)), 1.5/exp(2)))
+
+theta.alpha
+
+colnames(theta.alpha) <- c("phi", "alpha", "nu")
+
+
+n_iter <- 10
+mse_l <- numeric(n_iter)
+time_l <- numeric(n_iter)
+
+for (i in 1:n_iter) {
+  set.seed(i)
+  split <- split_data(data, n_train = 400000, n_test = 20000)
+  train <- split$train
+  test  <- split$test
+
+  coords_train <- as.matrix(train %>% select(x))
+  coords_train = cbind(coords_train,coords_train)
+  coords_test  <- as.matrix(test %>% select(x))
+  coords_test = cbind(coords_test,coords_test)
+  X.ho <- matrix(0, nrow = nrow(test), ncol = 1)
+
+  result <- peakRAM({
+    m.p <- spConjNNGP(train$y ~ 1, coords = coords_train, n.neighbors = 25,
+                      X.0 = X.ho, coords.0 = coords_test,
+                      n.omp.threads = 16,
+                      theta.alpha = theta.alpha, sigma.sq.IG = sigma.sq.IG,
+                      cov.model = cov.model)
+  })
+  print(result)
+  mse_l[i] <- mean((m.p$y.0.hat - test$y)^2)
+  time_l[i] <- result$Elapsed_Time
+  cat("Iteration", i, "- MSE:", mse_l[i], "Time:", time_l[i], "\n")
+}
+
+cat("\nAverage MSE:", mean(mse_l), " (SD:", sd(mse_l), ")\n")
+cat("Average Time:", mean(time_l), " (SD:", sd(time_l), ")\n")
+
+
+
+```
+
+
+# Results
+
+```{r}
+mse_l %>% mean()
+mse_l %>% sd()
+
+time_l %>% mean()
+time_l %>% sd()
+
+```
+
+
+
+
